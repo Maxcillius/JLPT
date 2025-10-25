@@ -1,15 +1,30 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, ChangeEvent, MouseEvent, FormEvent } from 'react';
+
+// --- Types ---
+type Category = 'Noun' | 'Verb' | 'I-Adjective' | 'Na-Adjective' | 'Adverb' | 'Other';
+
+interface Word {
+  id: string;
+  hiragana: string;
+  kanji?: string;
+  definition: string;
+  category?: Category;
+}
 
 // --- SVG Icons ---
-const TrashIcon = () => (
+const TrashIcon: React.FC = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
   </svg>
 );
 
-const HamburgerIcon = ({ onClick }) => (
+interface HamburgerIconProps {
+  onClick: () => void;
+}
+
+const HamburgerIcon: React.FC<HamburgerIconProps> = ({ onClick }) => (
   <button onClick={onClick} className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-4 6h4" />
@@ -18,61 +33,58 @@ const HamburgerIcon = ({ onClick }) => (
 );
 
 // --- VocabCard Component ---
-function VocabCard({ word, onDelete }) {
+interface VocabCardProps {
+  word: Word;
+  onDelete: (id: string) => void;
+}
+
+const VocabCard: React.FC<VocabCardProps> = ({ word, onDelete }) => {
   const [isRevealed, setIsRevealed] = useState(false);
 
-  const categoryColor = {
+  const categoryColor: string = {
     'Noun': 'bg-blue-900 text-blue-200',
     'Verb': 'bg-green-900 text-green-200',
     'I-Adjective': 'bg-yellow-900 text-yellow-200',
     'Na-Adjective': 'bg-purple-900 text-purple-200',
     'Adverb': 'bg-pink-900 text-pink-200',
     'Other': 'bg-gray-600 text-gray-100',
-  }[word.category] || 'bg-gray-600 text-gray-100';
+  }[word.category ?? 'Other'];
 
   return (
     <div
-      className="group rounded-lg [perspective:1000px] cursor-pointer"
+      className="group rounded-lg [perspective:1000px] cursor-pointer relative"
       onClick={() => setIsRevealed(!isRevealed)}
     >
       <div
         className={`relative min-h-[160px] w-full shadow-lg rounded-lg transition-transform duration-500 [transform-style:preserve-3d] ${isRevealed ? '[transform:rotateY(180deg)]' : ''}`}
       >
-        {/* Front of card */}
+        {/* Front */}
         <div className="absolute inset-0 bg-gray-800 p-4 rounded-lg flex flex-col justify-center items-center text-center [backface-visibility:hidden]">
           <div>
             {word.kanji ? (
               <>
-                {/* Kanji is present, so it's the main text */}
                 <div className="text-3xl font-bold text-white mb-1">{word.kanji}</div>
-                {/* Hiragana is hidden, shown on hover */}
-                <div className="text-xl text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-[1.5em]"> {/* h-[1.5em] to prevent layout shift */}
+                <div className="text-xl text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-[1.5em]">
                   {word.hiragana}
                 </div>
               </>
             ) : (
               <>
-                {/* No Kanji, so Hiragana is the main text */}
                 <div className="text-3xl font-bold text-white mb-1">{word.hiragana}</div>
-                {/* Empty div to maintain spacing */}
                 <div className="text-xl h-[1.5em]"></div>
               </>
             )}
           </div>
-          {/* Category Tag on Front */}
           {word.category && (
             <span className={`absolute bottom-2 left-2 text-xs font-semibold px-2 py-0.5 rounded ${categoryColor}`}>
               {word.category}
             </span>
           )}
         </div>
-        
-        {/* Back of card */}
+
+        {/* Back */}
         <div className="absolute inset-0 bg-gray-800 p-4 rounded-lg flex flex-col justify-center items-center text-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
-          <div>
-            <p className="text-lg text-gray-100">{word.definition}</p>
-          </div>
-          {/* Category Tag on Back */}
+          <p className="text-lg text-gray-100">{word.definition}</p>
           {word.category && (
             <span className={`absolute bottom-2 left-2 text-xs font-semibold px-2 py-0.5 rounded ${categoryColor}`}>
               {word.category}
@@ -80,11 +92,11 @@ function VocabCard({ word, onDelete }) {
           )}
         </div>
       </div>
-      
-      {/* Delete button (sits outside the flip container) */}
+
+      {/* Delete button */}
       <button
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent card from flipping when deleting
+        onClick={(e: MouseEvent<HTMLButtonElement>) => {
+          e.stopPropagation();
           onDelete(word.id);
         }}
         className="absolute top-2 right-2 p-1 text-gray-500 hover:text-red-400 transition-opacity opacity-0 group-hover:opacity-100 duration-200 z-10"
@@ -94,23 +106,22 @@ function VocabCard({ word, onDelete }) {
       </button>
     </div>
   );
-}
+};
 
 // --- SideMenu Component ---
-function SideMenu({ isOpen, onClose, onNavigate }) {
+interface SideMenuProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onNavigate: (page: 'home' | 'add') => void;
+}
+
+const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate }) => {
   if (!isOpen) return null;
 
   return (
     <div>
-      {/* Overlay */}
-      <div 
-        className="fixed inset-0 bg-black opacity-50 z-40" 
-        onClick={onClose}
-      ></div>
-      {/* Menu */}
-      <div 
-        className={`fixed top-0 left-0 w-64 h-full bg-gray-900 shadow-xl shadow-black/30 z-50 p-6 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
+      <div className="fixed inset-0 bg-black opacity-50 z-40" onClick={onClose}></div>
+      <div className={`fixed top-0 left-0 w-64 h-full bg-gray-900 shadow-xl shadow-black/30 z-50 p-6 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <h2 className="text-2xl font-bold text-white mb-8">Menu</h2>
         <nav className="flex flex-col gap-4">
           <button 
@@ -129,57 +140,217 @@ function SideMenu({ isOpen, onClose, onNavigate }) {
       </div>
     </div>
   );
-}
+};
 
 // --- HomePage Component ---
-function HomePage({ vocabulary, onDelete }) {
-  // Group vocabulary by category
-  const groupedVocabulary = vocabulary.reduce((acc, word) => {
-    const category = word.category || 'Other';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(word);
-    return acc;
-  }, {});
+interface HomePageProps {
+  vocabulary: Word[];
+  onDelete: (id: string) => void;
+}
 
-  const categoryOrder = ['Noun', 'Verb', 'I-Adjective', 'Na-Adjective', 'Adverb', 'Other'];
+const HomePage: React.FC<HomePageProps> = ({ vocabulary, onDelete }) => {
+  const groupedVocabulary: Record<Category, Word[]> = useMemo(() => {
+    return vocabulary.reduce((acc, word) => {
+      const category: Category = word.category ?? 'Other';
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(word);
+      return acc;
+    }, {} as Record<Category, Word[]>);
+  }, [vocabulary]);
+
+  const categoryOrder: Category[] = ['Noun', 'Verb', 'I-Adjective', 'Na-Adjective', 'Adverb', 'Other'];
 
   return (
     <section className="bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col w-full">
       <h2 className="text-3xl font-bold text-white mb-8 text-center">Your Vocabulary</h2>
-      
+
       {vocabulary.length === 0 ? (
         <div className="flex items-center justify-center h-full text-gray-400 min-h-[200px]">
           Add some words to get started!
         </div>
       ) : (
         <div className="flex flex-col gap-10">
-          {categoryOrder.map(category => (
+          {categoryOrder.map(category =>
             groupedVocabulary[category] && (
               <div key={category}>
                 <h3 className="text-lg font-semibold text-amber-400 uppercase tracking-wider mb-4 pb-2 border-b border-gray-700">{category}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {groupedVocabulary[category].map((word) => (
-                    <VocabCard 
-                      key={word.id} 
-                      word={word} 
-                      onDelete={onDelete}
-                    />
+                  {groupedVocabulary[category].map(word => (
+                    <VocabCard key={word.id} word={word} onDelete={onDelete} />
                   ))}
                 </div>
               </div>
             )
-          ))}
+          )}
         </div>
       )}
     </section>
   );
+};
+
+// --- AddWordPage Component ---
+interface AddWordPageProps {
+  onWordAdded: (word: Word) => void;
+}
+
+const categories: Category[] = ['Noun', 'Verb', 'I-Adjective', 'Na-Adjective', 'Adverb', 'Other'];
+
+const AddWordPage: React.FC<AddWordPageProps> = ({ onWordAdded }) => {
+  const [newHiragana, setNewHiragana] = useState('');
+  const [newKanji, setNewKanji] = useState('');
+  const [newDefinition, setNewDefinition] = useState('');
+  const [newCategory, setNewCategory] = useState<Category>('Noun');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const handleAddNewWord = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!newHiragana || !newDefinition) {
+      setFormError("Hiragana and Definition are required.");
+      return;
+    }
+
+    setFormError(null);
+
+    const newWord: Word = {
+      id: crypto.randomUUID(),
+      hiragana: newHiragana,
+      kanji: newKanji || undefined,
+      definition: newDefinition,
+      category: newCategory,
+    };
+
+    onWordAdded(newWord);
+    setNewHiragana('');
+    setNewKanji('');
+    setNewDefinition('');
+    setNewCategory('Noun');
+  };
+
+  return (
+    <section className="bg-gray-800 p-6 sm:p-8 rounded-lg shadow-lg w-full max-w-lg mx-auto">
+      <h2 className="text-3xl font-bold text-white mb-8 text-center">Add New Word</h2>
+
+      {formError && (
+        <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg relative mb-6" role="alert">
+          <span className="block sm:inline">{formError}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleAddNewWord} className="flex flex-col gap-4">
+        <div>
+          <label htmlFor="hiragana" className="block text-sm font-medium text-gray-300 mb-1">Hiragana (Required)</label>
+          <input
+            type="text"
+            id="hiragana"
+            value={newHiragana}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewHiragana(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            placeholder="たべる"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="kanji" className="block text-sm font-medium text-gray-300 mb-1">Kanji (Optional)</label>
+          <input
+            type="text"
+            id="kanji"
+            value={newKanji}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewKanji(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            placeholder="食べる"
+          />
+        </div>
+        <div>
+          <label htmlFor="definition" className="block text-sm font-medium text-gray-300 mb-1">Definition (Required)</label>
+          <input
+            type="text"
+            id="definition"
+            value={newDefinition}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewDefinition(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            placeholder="To eat"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-1">Category (Required)</label>
+          <select
+            id="category"
+            value={newCategory}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewCategory(e.target.value as Category)}
+            className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="submit"
+          className="w-full mt-2 px-6 py-3 bg-amber-600 text-white font-semibold rounded-lg shadow-md hover:bg-amber-700 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+        >
+          Add Word
+        </button>
+      </form>
+    </section>
+  );
+};
+
+// --- Main App Component ---
+export default function App() {
+  const [vocabulary, setVocabulary] = useState<Word[]>(() =>
+    initialVocabulary.map(word => ({ ...word, id: crypto.randomUUID() }))
+  );
+  const [page, setPage] = useState<'home' | 'add'>('home');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleDeleteWord = (wordId: string) => {
+    setVocabulary(prev => prev.filter(word => word.id !== wordId));
+  };
+
+  const handleAddWord = (newWord: Word) => {
+    setVocabulary(prev => [...prev, newWord]);
+    navigateTo('home');
+  };
+
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+  const navigateTo = (pageName: 'home' | 'add') => {
+    setPage(pageName);
+    setIsMenuOpen(false);
+  };
+
+  return (
+    <div className="flex flex-col items-center min-h-screen w-full bg-gray-900 p-4 sm:p-8 font-inter">
+      <SideMenu 
+        isOpen={isMenuOpen}
+        onClose={toggleMenu}
+        onNavigate={navigateTo}
+      />
+      <div className="w-full max-w-5xl mx-auto">
+        <header className="text-center mb-10 pb-4 border-b border-gray-700">
+          <div className="relative flex items-center justify-center max-w-5xl mx-auto">
+            <div className="absolute left-0">
+              <HamburgerIcon onClick={toggleMenu} />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold text-amber-300">日本語単語帳</h1>
+              <p className="text-lg text-amber-400">Japanese Vocabulary Learner</p>
+            </div>
+          </div>
+        </header>
+
+        <div className="w-full">
+          {page === 'home' && <HomePage vocabulary={vocabulary} onDelete={handleDeleteWord} />}
+          {page === 'add' && <AddWordPage onWordAdded={handleAddWord} />}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // --- Initial Data ---
-const initialVocabulary = [
-  // Nouns
+const initialVocabulary: Omit<Word, 'id'>[] = [
   { hiragana: 'うで', kanji: '腕', definition: 'arm', category: 'Noun' },
   { hiragana: 'こし', kanji: '腰', definition: 'waist', category: 'Noun' },
   { hiragana: 'むね', kanji: '胸', definition: 'chest', category: 'Noun' },
@@ -232,7 +403,6 @@ const initialVocabulary = [
   { hiragana: 'じゅんび', kanji: '準備', definition: 'preparation, arrangements', category: 'Noun' },
   { hiragana: 'まんぞく', kanji: '満足', definition: 'satisfaction (also a Na-Adjective)', category: 'Noun' },
   { hiragana: 'たがい', kanji: '互い', definition: 'each other, one another', category: 'Noun' },
-  // Verbs
   { hiragana: 'まなぶ', kanji: '学ぶ', definition: 'to learn', category: 'Verb' },
   { hiragana: 'みとめる', kanji: '認める', definition: 'to recognize', category: 'Verb' },
   { hiragana: 'よける', kanji: '避ける', definition: 'to avoid (physical contact with)', category: 'Verb' },
@@ -260,7 +430,6 @@ const initialVocabulary = [
   { hiragana: 'えんじる', kanji: '演じる', definition: 'to act (a part), to play (a role)', category: 'Verb' },
   { hiragana: 'おさえる', kanji: '抑える', definition: 'to keep within limits, to restrain', category: 'Verb' },
   { hiragana: 'はっさん', kanji: '発散', definition: "letting out (feelings), emission (this is a noun, but often used as '発散する' - to let out)", category: 'Verb' },
-  // I-Adjectives
   { hiragana: 'えらい', kanji: '偉い', definition: 'great, excellent', category: 'I-Adjective' },
   { hiragana: 'さびしい', kanji: '寂しい', definition: 'lonely', category: 'I-Adjective' },
   { hiragana: 'かたい', kanji: '硬い', definition: 'hard, solid, tough', category: 'I-Adjective' },
@@ -271,7 +440,6 @@ const initialVocabulary = [
   { hiragana: 'やわらかい', kanji: '柔らかい', definition: 'soft, tender', category: 'I-Adjective' },
   { hiragana: 'つらい', kanji: '辛い', definition: 'harsh, tough, painful', category: 'I-Adjective' },
   { hiragana: 'かるい', kanji: '軽い', definition: 'light (not heavy), feeling light', category: 'I-Adjective' },
-  // Na-Adjectives
   { hiragana: 'せいかく', kanji: '正確', definition: 'accurate', category: 'Na-Adjective' },
   { hiragana: 'たしか', kanji: '確か', definition: 'sure', category: 'Na-Adjective' },
   { hiragana: 'いがい', kanji: '意外', definition: 'unexpected, surprising', category: 'Na-Adjective' },
@@ -283,203 +451,8 @@ const initialVocabulary = [
   { hiragana: 'かんたん', kanji: '簡単', definition: 'simple, easy', category: 'Na-Adjective' },
   { hiragana: 'とうぜん', kanji: '当然', definition: 'natural, naturally', category: 'Na-Adjective' },
   { hiragana: 'ひつよう', kanji: '必要', definition: 'necessary, needed, essential', category: 'Na-Adjective' },
-  // Adverbs
   { hiragana: 'めったに', kanji: '滅多に', definition: 'rarely (usually used with a negative verb)', category: 'Adverb' },
-  // Other
   { hiragana: 'いがい', kanji: '以外', definition: 'excluding, except (for) (This functions as a particle or suffix)', category: 'Other' },
 ];
 
-const categories = ['Noun', 'Verb', 'I-Adjective', 'Na-Adjective', 'Adverb', 'Other'];
-
-function AddWordPage({ onWordAdded }) {
-  const [newHiragana, setNewHiragana] = useState('');
-  const [newKanji, setNewKanji] = useState('');
-  const [newDefinition, setNewDefinition] = useState('');
-  const [newCategory, setNewCategory] = useState('Noun'); // Add category state
-  const [formError, setFormError] = useState(null); // Local error for the form
-
-  const handleAddNewWord = (e) => {
-    e.preventDefault();
-    if (!newHiragana || !newDefinition) {
-      setFormError("Hiragana and Definition are required.");
-      return;
-    }
-
-    setFormError(null);
-    
-    // Create a new word object with a unique ID
-    const newWord = {
-      id: crypto.randomUUID(), // Generate a unique local ID
-      hiragana: newHiragana,
-      kanji: newKanji,
-      definition: newDefinition,
-      category: newCategory,
-    };
-
-    onWordAdded(newWord); // Pass the new word up to the App component
-
-    // Clear form
-    setNewHiragana('');
-    setNewKanji('');
-    setNewDefinition('');
-    setNewCategory('Noun');
-  };
-
-  return (
-    <section className="bg-gray-800 p-6 sm:p-8 rounded-lg shadow-lg w-full max-w-lg mx-auto">
-      <h2 className="text-3xl font-bold text-white mb-8 text-center">Add New Word</h2>
-      
-      {formError && (
-        <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg relative mb-6" role="alert">
-          <span className="block sm:inline">{formError}</span>
-        </div>
-      )}
-      
-      {/* Removed SeedMessage div */}
-
-      <form onSubmit={handleAddNewWord} className="flex flex-col gap-4">
-        <div>
-          <label htmlFor="hiragana" className="block text-sm font-medium text-gray-300 mb-1">Hiragana (Required)</label>
-          <input
-            type="text"
-            id="hiragana"
-            value={newHiragana}
-            onChange={(e) => setNewHiragana(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            placeholder="たべる"
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="kanji" className="block text-sm font-medium text-gray-300 mb-1">Kanji (Optional)</label>
-          <input
-            type="text"
-            id="kanji"
-            value={newKanji}
-            onChange={(e) => setNewKanji(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            placeholder="食べる"
-          />
-        </div>
-        <div>
-          <label htmlFor="definition" className="block text-sm font-medium text-gray-300 mb-1">Definition (Required)</label>
-          <input
-            type="text"
-            id="definition"
-            value={newDefinition}
-            onChange={(e) => setNewDefinition(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            placeholder="To eat"
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-1">Category (Required)</label>
-          <select
-            id="category"
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="submit"
-          className="w-full mt-2 px-6 py-3 bg-amber-600 text-white font-semibold rounded-lg shadow-md hover:bg-amber-700 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-gray-800"
-        >
-          Add Word
-        </button>
-      </form>
-
-      {/* Removed "One-Time Data Import" section */}
-    </section>
-  );
-}
-
-
-// --- Main App Component ---
-export default function App() {
-  // App state
-  // Initialize vocabulary from the hardcoded list, adding a unique ID to each
-  const [vocabulary, setVocabulary] = useState(() => 
-    initialVocabulary.map(word => ({ ...word, id: crypto.randomUUID() }))
-  );
-  const [page, setPage] = useState('home'); // 'home' or 'add'
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // --- Event Handlers ---
-
-  const handleDeleteWord = (wordId) => {
-    // A custom modal would be better, but window.confirm is disallowed.
-    // We'll just delete directly from the state.
-    setVocabulary(prevVocabulary => 
-      prevVocabulary.filter(word => word.id !== wordId)
-    );
-  };
-  
-  const handleAddWord = (newWord) => {
-    setVocabulary(prevVocabulary => [...prevVocabulary, newWord]);
-    navigateTo('home'); // Navigate home after adding
-  };
-
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-  
-  const navigateTo = (pageName) => {
-    setPage(pageName);
-    setIsMenuOpen(false);
-  };
-
-  // --- Render ---
-
-  return (
-    <div className="flex flex-col items-center min-h-screen w-full bg-gray-900 p-4 sm:p-8 font-inter">
-      <SideMenu 
-        isOpen={isMenuOpen}
-        onClose={toggleMenu}
-        onNavigate={navigateTo}
-      />
-      <div className="w-full max-w-5xl mx-auto">
-        <header className="text-center mb-10 pb-4 border-b border-gray-700">
-          <div className="relative flex items-center justify-center max-w-5xl mx-auto">
-            <div className="absolute left-0">
-              <HamburgerIcon onClick={toggleMenu} />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold text-amber-300">日本語単語帳</h1>
-              <p className="text-lg text-amber-400">Japanese Vocabulary Learner</p>
-            </div>
-          </div>
-          {/* Removed userId display */}
-        </header>
-
-        {/* Removed error display */}
-
-        {/* Removed loading display */}
-
-        <div className="w-full">
-            
-            {page === 'home' && (
-              <HomePage 
-                vocabulary={vocabulary} 
-                onDelete={handleDeleteWord} 
-              />
-            )}
-            
-            {page === 'add' && (
-              <AddWordPage
-                onWordAdded={handleAddWord} // Pass the add handler
-              />
-            )}
-
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- SVG Icons ---
-// (Moved to top)
 
