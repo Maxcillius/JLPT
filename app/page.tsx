@@ -251,8 +251,6 @@ const HomePage: React.FC<HomePageProps> = ({ vocabulary, onDelete }) => {
 
   return (
     <section className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg flex flex-col w-full">
-      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-8 text-center">Your Vocabulary</h2>
-
       {vocabulary.length === 0 ? (
         <div className="flex items-center justify-center h-full text-gray-400 min-h-[200px]">
           { groupedVocabulary ? "No words found for your search." : "Add some words to get started!" }
