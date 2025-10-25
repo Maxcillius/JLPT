@@ -32,6 +32,61 @@ const HamburgerIcon: React.FC<HamburgerIconProps> = ({ onClick }) => (
   </button>
 );
 
+const SearchIcon: React.FC = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
+
+const CloseIcon: React.FC<HamburgerIconProps> = ({ onClick }) => (
+  <button onClick={onClick} className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  </button>
+);
+
+// --- Trie Implementation for Search ---
+class TrieNode {
+  children: Map<string, TrieNode>;
+  wordIds: Set<string>;
+
+  constructor() {
+    this.children = new Map();
+    this.wordIds = new Set();
+  }
+}
+
+class Trie {
+  root: TrieNode;
+
+  constructor() {
+    this.root = new TrieNode();
+  }
+
+  insert(text: string, wordId: string) {
+    let node = this.root;
+    for (const char of text) {
+      if (!node.children.has(char)) {
+        node.children.set(char, new TrieNode());
+      }
+      node = node.children.get(char)!;
+      node.wordIds.add(wordId);
+    }
+  }
+
+  search(query: string): string[] {
+    let node = this.root;
+    for (const char of query) {
+      if (!node.children.has(char)) {
+        return [];
+      }
+      node = node.children.get(char)!;
+    }
+    return Array.from(node.wordIds);
+  }
+}
+
 // --- VocabCard Component ---
 interface VocabCardProps {
   word: Word;
@@ -63,15 +118,15 @@ const VocabCard: React.FC<VocabCardProps> = ({ word, onDelete }) => {
           <div>
             {word.kanji ? (
               <>
-                <div className="text-3xl font-bold text-white mb-1">{word.kanji}</div>
-                <div className="text-xl text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-[1.5em]">
+                <div className="text-2xl sm:text-3xl font-bold text-white mb-1 break-all px-2">{word.kanji}</div>
+                <div className="text-lg sm:text-xl text-gray-300 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-[1.5em]">
                   {word.hiragana}
                 </div>
               </>
             ) : (
               <>
-                <div className="text-3xl font-bold text-white mb-1">{word.hiragana}</div>
-                <div className="text-xl h-[1.5em]"></div>
+                <div className="text-2xl sm:text-3xl font-bold text-white mb-1 break-all px-2">{word.hiragana}</div>
+                <div className="text-lg sm:text-xl h-[1.5em]"></div>
               </>
             )}
           </div>
@@ -84,7 +139,7 @@ const VocabCard: React.FC<VocabCardProps> = ({ word, onDelete }) => {
 
         {/* Back */}
         <div className="absolute inset-0 bg-gray-800 p-4 rounded-lg flex flex-col justify-center items-center text-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
-          <p className="text-lg text-gray-100">{word.definition}</p>
+          <p className="text-base sm:text-lg text-gray-100 break-all px-2">{word.definition}</p>
           {word.category && (
             <span className={`absolute bottom-2 left-2 text-xs font-semibold px-2 py-0.5 rounded ${categoryColor}`}>
               {word.category}
@@ -116,11 +171,12 @@ interface SideMenuProps {
 }
 
 const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate }) => {
-  if (!isOpen) return null;
-
   return (
-    <div>
-      <div className="fixed inset-0 bg-black opacity-50 z-40" onClick={onClose}></div>
+    <>
+      <div 
+        className={`fixed inset-0 bg-black z-40 transition-opacity duration-300 ease-in-out ${isOpen ? 'opacity-50' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      ></div>
       <div className={`fixed top-0 left-0 w-64 h-full bg-gray-900 shadow-xl shadow-black/30 z-50 p-6 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <h2 className="text-2xl font-bold text-white mb-8">Menu</h2>
         <nav className="flex flex-col gap-4">
@@ -138,7 +194,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate }) => {
           </button>
         </nav>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -161,17 +217,15 @@ const HomePage: React.FC<HomePageProps> = ({ vocabulary, onDelete }) => {
   const categoryOrder: Category[] = ['Noun', 'Verb', 'I-Adjective', 'Na-Adjective', 'Adverb', 'Other'];
 
   return (
-    <section className="bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col w-full">
-      <h2 className="text-3xl font-bold text-white mb-8 text-center">Your Vocabulary</h2>
-
+    <section className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg flex flex-col w-full">
       {vocabulary.length === 0 ? (
         <div className="flex items-center justify-center h-full text-gray-400 min-h-[200px]">
-          Add some words to get started!
+          { groupedVocabulary ? "No words found for your search." : "Add some words to get started!" }
         </div>
       ) : (
         <div className="flex flex-col gap-10">
           {categoryOrder.map(category =>
-            groupedVocabulary[category] && (
+            groupedVocabulary[category] && groupedVocabulary[category].length > 0 && (
               <div key={category}>
                 <h3 className="text-lg font-semibold text-amber-400 uppercase tracking-wider mb-4 pb-2 border-b border-gray-700">{category}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -228,7 +282,7 @@ const AddWordPage: React.FC<AddWordPageProps> = ({ onWordAdded }) => {
 
   return (
     <section className="bg-gray-800 p-6 sm:p-8 rounded-lg shadow-lg w-full max-w-lg mx-auto">
-      <h2 className="text-3xl font-bold text-white mb-8 text-center">Add New Word</h2>
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-8 text-center">Add New Word</h2>
 
       {formError && (
         <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded-lg relative mb-6" role="alert">
@@ -303,6 +357,33 @@ export default function App() {
   );
   const [page, setPage] = useState<'home' | 'add'>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const searchTrie = useMemo(() => {
+    const trie = new Trie();
+    vocabulary.forEach(word => {
+      const textsToInsert = [word.hiragana, word.kanji, word.definition].filter(Boolean) as string[];
+      textsToInsert.forEach(text => {
+        const lowerText = text.toLowerCase();
+        for (let i = 0; i < lowerText.length; i++) {
+          trie.insert(lowerText.substring(i), word.id);
+        }
+      });
+    });
+    return trie;
+  }, [vocabulary]);
+
+  const filteredVocabulary = useMemo(() => {
+    if (!searchQuery) {
+      return vocabulary;
+    }
+    const lowerQuery = searchQuery.toLowerCase();
+    const wordIds = searchTrie.search(lowerQuery);
+    const wordIdSet = new Set(wordIds);
+    return vocabulary.filter(word => wordIdSet.has(word.id));
+  }, [vocabulary, searchQuery, searchTrie]);
+
 
   const handleDeleteWord = (wordId: string) => {
     setVocabulary(prev => prev.filter(word => word.id !== wordId));
@@ -320,6 +401,11 @@ export default function App() {
     setIsMenuOpen(false);
   };
 
+  const handleCloseSearch = () => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+  };
+
   return (
     <div className="flex flex-col items-center min-h-screen w-full bg-gray-900 p-4 sm:p-8 font-inter">
       <SideMenu 
@@ -328,20 +414,52 @@ export default function App() {
         onNavigate={navigateTo}
       />
       <div className="w-full max-w-5xl mx-auto">
-        <header className="text-center mb-10 pb-4 border-b border-gray-700">
-          <div className="relative flex items-center justify-center max-w-5xl mx-auto">
+        <header className="text-center mb-6 pb-4 border-b border-gray-700">
+          <div className="relative flex items-center justify-center max-w-5xl mx-auto h-12">
+            
+            {/* Left Icon */}
             <div className="absolute left-0">
               <HamburgerIcon onClick={toggleMenu} />
             </div>
-            <div>
-              <h1 className="text-4xl font-bold text-amber-300">日本語単語帳</h1>
-              <p className="text-lg text-amber-400">Japanese Vocabulary Learner</p>
+
+            {/* Center Content: Title */}
+            <div className="text-center truncate">
+              <h1 className="text-2xl sm:text-4xl font-bold text-amber-300 truncate">日本語単語帳</h1>
+              <p className="text-sm sm:text-lg text-amber-400">Japanese Vocabulary Learner</p>
             </div>
           </div>
         </header>
 
+        {/* Search Section (Home Page Only) */}
+        {page === 'home' && (
+          <div className="w-full max-w-md flex justify-center items-center h-12 mx-auto mb-6">
+            {!isSearchOpen && (
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="flex items-center gap-2 p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              >
+                <SearchIcon />
+                <span className="text-gray-300">Search Words...</span>
+              </button>
+            )}
+            {isSearchOpen && (
+              <div className="w-full flex items-center gap-2">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="Search Hiragana, Kanji, Definition..."
+                  autoFocus
+                />
+                <CloseIcon onClick={handleCloseSearch} />
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="w-full">
-          {page === 'home' && <HomePage vocabulary={vocabulary} onDelete={handleDeleteWord} />}
+          {page === 'home' && <HomePage vocabulary={filteredVocabulary} onDelete={handleDeleteWord} />}
           {page === 'add' && <AddWordPage onWordAdded={handleAddWord} />}
         </div>
       </div>
@@ -454,5 +572,4 @@ const initialVocabulary: Omit<Word, 'id'>[] = [
   { hiragana: 'めったに', kanji: '滅多に', definition: 'rarely (usually used with a negative verb)', category: 'Adverb' },
   { hiragana: 'いがい', kanji: '以外', definition: 'excluding, except (for) (This functions as a particle or suffix)', category: 'Other' },
 ];
-
 
