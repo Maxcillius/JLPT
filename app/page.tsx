@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, ChangeEvent, MouseEvent, FormEvent } from 'react';
+import React, { useState, useMemo, ChangeEvent, MouseEvent, FormEvent, useRef } from 'react';
 
 // --- Types ---
 type Category = 'Noun' | 'Verb' | 'I-Adjective' | 'Na-Adjective' | 'Adverb' | 'Other';
@@ -95,6 +95,8 @@ interface VocabCardProps {
 
 const VocabCard: React.FC<VocabCardProps> = ({ word, onDelete }) => {
   const [isRevealed, setIsRevealed] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const categoryColor: string = {
     'Noun': 'bg-blue-900 text-blue-200',
@@ -105,10 +107,41 @@ const VocabCard: React.FC<VocabCardProps> = ({ word, onDelete }) => {
     'Other': 'bg-gray-600 text-gray-100',
   }[word.category ?? 'Other'];
 
+  const handlePressStart = () => {
+    longPressTimer.current = setTimeout(() => {
+      setShowDelete(true);
+    }, 500);
+  };
+
+  const clearLongPressTimer = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handlePressEnd = () => {
+    clearLongPressTimer();
+  };
+  
+  const handleClick = () => {
+    if (showDelete) {
+      setShowDelete(false);
+      return;
+    }
+    setIsRevealed(!isRevealed);
+  };
+
   return (
     <div
       className="group rounded-lg [perspective:1000px] cursor-pointer relative"
-      onClick={() => setIsRevealed(!isRevealed)}
+      onClick={handleClick}
+      onMouseDown={handlePressStart}
+      onMouseUp={handlePressEnd}
+      onMouseLeave={handlePressEnd}
+      onTouchStart={handlePressStart}
+      onTouchEnd={handlePressEnd}
+      onTouchMove={clearLongPressTimer}
     >
       <div
         className={`relative min-h-[160px] w-full shadow-lg rounded-lg transition-transform duration-500 [transform-style:preserve-3d] ${isRevealed ? '[transform:rotateY(180deg)]' : ''}`}
@@ -154,7 +187,7 @@ const VocabCard: React.FC<VocabCardProps> = ({ word, onDelete }) => {
           e.stopPropagation();
           onDelete(word.id);
         }}
-        className="absolute top-2 right-2 p-1 text-gray-500 hover:text-red-400 transition-opacity opacity-0 group-hover:opacity-100 duration-200 z-10"
+        className={`absolute bottom-2 right-2 p-1.5 bg-black/50 rounded-full text-red-400 hover:text-red-300 transition-opacity duration-200 z-10 ${showDelete ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
         title="Delete word"
       >
         <TrashIcon />
@@ -218,6 +251,8 @@ const HomePage: React.FC<HomePageProps> = ({ vocabulary, onDelete }) => {
 
   return (
     <section className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg flex flex-col w-full">
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-8 text-center">Your Vocabulary</h2>
+
       {vocabulary.length === 0 ? (
         <div className="flex items-center justify-center h-full text-gray-400 min-h-[200px]">
           { groupedVocabulary ? "No words found for your search." : "Add some words to get started!" }
@@ -572,4 +607,5 @@ const initialVocabulary: Omit<Word, 'id'>[] = [
   { hiragana: 'めったに', kanji: '滅多に', definition: 'rarely (usually used with a negative verb)', category: 'Adverb' },
   { hiragana: 'いがい', kanji: '以外', definition: 'excluding, except (for) (This functions as a particle or suffix)', category: 'Other' },
 ];
+
 
